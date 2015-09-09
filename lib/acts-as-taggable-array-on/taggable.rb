@@ -14,6 +14,18 @@ module ActsAsTaggableArrayOn
         scope :"without_any_#{tag_name}", ->(tags){ where.not("#{tag_name} && ARRAY[?]::varchar[]", parser.parse(tags)) }
         scope :"without_all_#{tag_name}", ->(tags){ where.not("#{tag_name} @> ARRAY[?]::varchar[]", parser.parse(tags)) }
 
+        define_method :"#{tag_name}=" do |value|
+          write_attribute tag_name,
+            case value
+            when String then value.split(",").map(&:strip)
+            else value
+            end
+        end
+
+        define_method :"#{tag_name}_text" do
+          (read_attribute(tag_name) || []).join ","
+        end
+
         self.class.class_eval do
           define_method :"all_#{tag_name}" do |options = {}, &block|
             subquery_scope = unscoped.select("unnest(#{table_name}.#{tag_name}) as tag").uniq
